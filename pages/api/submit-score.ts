@@ -11,6 +11,7 @@ const supabase = createClient(
 interface SessionPayload extends jwt.JwtPayload {
     fid: number;
     username: string;
+    jti: string;
 }
 
 function generateSignature(score: number, token: string): string {
@@ -23,13 +24,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
-    if (req.method === 'OPTIONS') {
-        return res.status(204).end();
-    }
-  
-    if (req.method !== 'POST') {
-        return res.status(405).end('Method Not Allowed');
-    }
+    if (req.method === 'OPTIONS') return res.status(204).end();
+    if (req.method !== 'POST') return res.status(405).end('Method Not Allowed');
     
     try {
         const authHeader = req.headers.authorization;
@@ -49,7 +45,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
         
         const payload = jwt.verify(token, process.env.JWT_SECRET!) as SessionPayload;
-        const { fid, username, iat } = payload;
+        const { fid, username, iat, jti } = payload;
+        const { error: tokenUsedError } = await supabase
+            .from('UsedSessionTokens')
+            .insert({ jti: jti });
+        if (tokenUsedError) {
+            return res.status(403).json({ error: 'This session token has already been used.' });
+        }
         
         const issueTime = iat! * 1000;
         const submissionTime = Date.now();
