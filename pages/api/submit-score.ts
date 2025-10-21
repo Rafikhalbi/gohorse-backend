@@ -9,6 +9,7 @@ const supabase = createClient(
 
 interface SessionPayload extends jwt.JwtPayload {
     fid: number;
+    username: string;
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -32,7 +33,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const token = authHeader.split(' ')[1];
 
         const payload = jwt.verify(token, process.env.JWT_SECRET!) as SessionPayload;
-        const { fid } = payload;
+        const { fid, username } = payload; 
 
         const { score } = req.body;
         if (typeof score !== 'number') {
@@ -42,7 +43,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const { error: rpcError } = await supabase.rpc('upsert_player_score', {
             fid_input: fid,
             score_input: score,
-            username_input: '...'
+            username_input: username
         });
         if (rpcError) throw rpcError;
         

@@ -40,7 +40,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await supabase.from('Player').upsert({ fid, username, play_lives: newLives }, { onConflict: 'fid' });
 
     const sessionId = randomUUID();
-    const payload = { fid, jti: sessionId };
+    const payload = { fid, username, jti: sessionId };
     const sessionToken = jwt.sign(payload, process.env.JWT_SECRET!, { expiresIn: '5m' });
 
     return res.status(200).json({ 
