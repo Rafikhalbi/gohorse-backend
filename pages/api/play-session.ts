@@ -8,8 +8,6 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-const MAX_LIVES = 5;
-
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -18,7 +16,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method === 'OPTIONS') {
     return res.status(204).end();
   }
-
   if (req.method !== 'POST') {
     return res.status(405).end('Method Not Allowed');
   }
@@ -29,16 +26,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const { data: player } = await supabase.from('Player').select('play_lives').eq('fid', fid).single();
-    const currentLives = player ? player.play_lives : MAX_LIVES;
+    const { data: newLives, error: rpcError } = await supabase.rpc('start_play_session', {
+      player_fid: fid,
+      player_username: username
+    });
 
-    if (currentLives <= 0) {
+    if (rpcError) throw rpcError;
+
+    if (newLives === -1) {
       return res.status(200).json({ canPlay: false, message: 'Not enough lives!' });
     }
-
-    const newLives = currentLives - 1;
-    await supabase.from('Player').upsert({ fid, username, play_lives: newLives }, { onConflict: 'fid' });
-
+    
     const sessionId = randomUUID();
     const payload = { fid, username, jti: sessionId };
     const sessionToken = jwt.sign(payload, process.env.JWT_SECRET!, { expiresIn: '5m' });
