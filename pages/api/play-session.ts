@@ -1,12 +1,13 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import jwt from 'jsonwebtoken';
-import { randomUUID } from 'crypto';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
+
+const MAX_LIVES = 5;
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -16,6 +17,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method === 'OPTIONS') {
     return res.status(204).end();
   }
+
   if (req.method !== 'POST') {
     return res.status(405).end('Method Not Allowed');
   }
@@ -37,8 +39,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(200).json({ canPlay: false, message: 'Not enough lives!' });
     }
     
-    const sessionId = randomUUID();
-    const payload = { fid, username, jti: sessionId };
+    const payload = { fid, username };
     const sessionToken = jwt.sign(payload, process.env.JWT_SECRET!, { expiresIn: '5m' });
 
     return res.status(200).json({ 

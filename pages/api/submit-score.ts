@@ -11,7 +11,6 @@ const supabase = createClient(
 interface SessionPayload extends jwt.JwtPayload {
     fid: number;
     username: string;
-    jti: string;
 }
 
 function generateSignature(score: number, token: string): string {
@@ -45,13 +44,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
         
         const payload = jwt.verify(token, process.env.JWT_SECRET!) as SessionPayload;
-        const { fid, username, iat, jti } = payload;
-        const { error: tokenUsedError } = await supabase
-            .from('UsedSessionTokens')
-            .insert({ jti: jti });
-        if (tokenUsedError) {
-            return res.status(403).json({ error: 'This session token has already been used.' });
-        }
+        const { fid, username, iat } = payload;
         
         const issueTime = iat! * 1000;
         const submissionTime = Date.now();
