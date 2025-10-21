@@ -25,9 +25,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .from('Player')
       .select('play_lives, last_life_update')
       .eq('fid', fid as string)
-      .single();
+      .maybeSingle();
 
-    if (error || !player) {
+    if (error) {
+        throw error;
+    }
+
+    if (!player) {
       return res.status(200).json({ play_lives: MAX_LIVES });
     }
 
@@ -49,7 +53,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .update({ play_lives: newLives, last_life_update: now.toISOString() })
         .eq('fid', fid as string)
         .select('play_lives')
-        .single();
+        .maybeSingle();
       
       if (updateError) throw updateError;
       currentLives = updatedPlayer!.play_lives;
