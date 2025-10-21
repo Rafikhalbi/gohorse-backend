@@ -18,13 +18,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method !== 'GET') return res.status(405).end('Method Not Allowed');
   
   const { fid } = req.query;
-  if (!fid) return res.status(400).json({ error: 'FID is required' });
+  if (!fid) {
+    return res.status(400).json({ error: 'FID is required' });
+  }
 
   try {
+    const numericFid = parseInt(fid as string);
     let { data: player, error } = await supabase
       .from('Player')
       .select('play_lives, last_life_update')
-      .eq('fid', fid as string)
+      .eq('fid', numericFid)
       .maybeSingle();
 
     if (error) {
@@ -32,6 +35,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     if (!player) {
+      // Pemain baru, buat entri di database dengan 5 nyawa
+      const { error: insertError } = await supabase
+        .from('Player')
+        .insert({ fid: numericFid, play_lives: MAX_LIVES });
+
+      if (insertError) {
+        console.error("Failed to create new player:", insertError);
+      }
+      
       return res.status(200).json({ play_lives: MAX_LIVES });
     }
 
@@ -51,7 +63,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const { error: updateError } = await supabase
         .from('Player')
         .update({ play_lives: newCalculatedLives, last_life_update: now.toISOString() })
-        .eq('fid', fid as string);
+        .eq('fid', numericFid);
       
       if (updateError) {
         console.error("Failed to update regenerated lives:", updateError);
