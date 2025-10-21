@@ -44,22 +44,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         livesToAdd = Math.floor(hoursPassed / REGEN_HOURS);
     }
     
-    let currentLives = player.play_lives;
-    let newLives = Math.min(MAX_LIVES, currentLives + livesToAdd);
+    let finalLives = player.play_lives;
+    let newCalculatedLives = Math.min(MAX_LIVES, finalLives + livesToAdd);
     
-    if (newLives > currentLives) {
-      const { data: updatedPlayer, error: updateError } = await supabase
+    if (newCalculatedLives > finalLives) {
+      const { error: updateError } = await supabase
         .from('Player')
-        .update({ play_lives: newLives, last_life_update: now.toISOString() })
-        .eq('fid', fid as string)
-        .select('play_lives')
-        .maybeSingle();
+        .update({ play_lives: newCalculatedLives, last_life_update: now.toISOString() })
+        .eq('fid', fid as string);
       
-      if (updateError) throw updateError;
-      currentLives = updatedPlayer!.play_lives;
+      if (updateError) {
+        console.error("Failed to update regenerated lives:", updateError);
+      } else {
+        finalLives = newCalculatedLives;
+      }
     }
 
-    return res.status(200).json({ play_lives: currentLives });
+    return res.status(200).json({ play_lives: finalLives });
 
   } catch (error: any) {
     return res.status(500).json({ error: 'Failed to fetch user status', details: error.message });
